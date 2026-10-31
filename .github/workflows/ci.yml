@@ -1,0 +1,70 @@
+name: UppBootstrap CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-posix:
+    name: POSIX (${{ matrix.os }} - ${{ matrix.cxx }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        cxx: [clang++, g++]
+        exclude:
+          - os: macos-latest
+            cxx: g++
+
+    steps:
+      - name: Checkout UppBootstrap
+        uses: actions/checkout@v4
+
+      - name: Checkout U++ Source (ai-upp)
+        uses: actions/checkout@v4
+        with:
+          repository: OuluBSD/ai-upp
+          path: upp-root
+          sparse-checkout: |
+            uppsrc
+
+      - name: Compile and Run Bootstrap
+        env:
+          CXX: ${{ matrix.cxx }}
+        run: |
+          ./bootstrap.sh --upp-root upp-root --verbose
+
+      - name: Verify umk Execution
+        run: |
+          ./upp-root/bin/umk
+
+  build-windows:
+    name: Windows (${{ matrix.compiler }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [msvc]
+
+    steps:
+      - name: Checkout UppBootstrap
+        uses: actions/checkout@v4
+
+      - name: Checkout U++ Source (ai-upp)
+        uses: actions/checkout@v4
+        with:
+          repository: OuluBSD/ai-upp
+          path: upp-root
+          sparse-checkout: |
+            uppsrc
+
+      - name: Setup MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Run Windows Bootstrap
+        shell: cmd
+        run: |
+          bootstrap.cmd --upp-root upp-root --verbose
