@@ -2,13 +2,13 @@
 UPPOUT = _out/
 CINC   =  -I./ -I$(UPPOUT)
 Macro  =  -DflagCLANG -DflagDEBUG -DflagSHARED -DflagDEBUG_FULL -DflagPOSIX -DflagOSX -DflagNOMM
-CXX = /opt/local/bin/clang++-mp-16
+CXX = clang++
 LINKER = $(CXX)
 CFLAGS = -D_DEBUG -mpopcnt -O0 -ggdb -g2 
 CXXFLAGS = -D_DEBUG -mpopcnt -O0 -ggdb -g2  -std=c++17 -Wno-logical-op-parentheses -mmacosx-version-min=10.11
 LDFLAGS =  $(LINKOPTIONS) -mmacosx-version-min=10.11
 LIBPATH =
-AR = /opt/local/bin/llvm-ar-mp-16 rc
+AR = ar rc
 
 OutDir_umk = $(UPPOUT)umk/CLANG-Blitz-Clang-Debug-Debug_Full-Linux-Main-Posix-Shared/
 Macro_umk = $(Macro) -DflagBLITZ -DflagMAIN
