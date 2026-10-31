@@ -29,8 +29,9 @@ jobs:
           repository: OuluBSD/ai-upp
           path: upp-root
           sparse-checkout: |
-            uppsrc
-            script
+            uppsrc/**
+            script/**
+          sparse-checkout-cone-mode: false
 
       - name: Install System Dependencies (Linux)
         if: runner.os == 'Linux'
@@ -66,8 +67,9 @@ jobs:
           repository: OuluBSD/ai-upp
           path: upp-root
           sparse-checkout: |
-            uppsrc
-            script
+            uppsrc/**
+            script/**
+          sparse-checkout-cone-mode: false
 
       - name: Setup MSVC Developer Command Prompt
         uses: ilammy/msvc-dev-cmd@v1
