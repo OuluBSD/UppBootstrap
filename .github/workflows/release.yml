@@ -69,16 +69,21 @@ jobs:
       - name: Package Release Asset
         shell: bash
         run: |
-          mkdir -p dist
+          mkdir -p dist/package/methods
+          cp upp-root/bin/umk dist/package/
+          cp -f methods/*.bm dist/package/methods/
+          cp scripts/install-methods.sh dist/package/
+          chmod +x dist/package/install-methods.sh dist/package/umk
+          cp RELEASE_README.md dist/package/README.md
           ASSET_NAME="umk-${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz"
-          tar -czvf "dist/${ASSET_NAME}" -C upp-root/bin umk
+          tar -czvf "dist/${ASSET_NAME}" -C dist/package .
           echo "Created dist/${ASSET_NAME}"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: asset-${{ matrix.target }}
-          path: dist/*
+          path: dist/*.tar.gz
           retention-days: 1
 
   build-release-windows:
@@ -119,16 +124,20 @@ jobs:
       - name: Package Release Asset
         shell: bash
         run: |
-          mkdir -p dist
+          mkdir -p dist/package/methods
+          cp upp-root/bin/umk.exe dist/package/
+          cp -f methods/*.bm dist/package/methods/
+          cp scripts/install-methods.cmd dist/package/
+          cp RELEASE_README.md dist/package/README.md
           ASSET_NAME="umk-${{ steps.version.outputs.version }}-windows-x86_64.zip"
-          cd upp-root/bin && 7z a -tzip "../../dist/${ASSET_NAME}" umk.exe
+          cd dist/package && 7z a -tzip "../${ASSET_NAME}" *
           echo "Created dist/${ASSET_NAME}"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: asset-windows-x86_64
-          path: dist/*
+          path: dist/*.zip
           retention-days: 1
 
   publish-release:
