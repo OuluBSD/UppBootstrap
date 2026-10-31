@@ -5,6 +5,8 @@ REM ============================================================================
 
 setlocal EnableDelayedExpansion
 
+if exist "C:\Program Files\7-Zip" set "PATH=%PATH%;C:\Program Files\7-Zip"
+
 set SCRIPT_DIR=%~dp0
 set BIN_DIR=%SCRIPT_DIR%bin
 set SOURCE=%SCRIPT_DIR%src\main.cpp

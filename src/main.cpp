@@ -259,16 +259,25 @@ int BootstrapUmk(const string& upp_root, const string& methods_dir, bool verbose
             RunCommand(curl_cmd);
         }
         if (FileExists(archive)) {
-            string extract_cmd = "7z.exe e -y \"" + archive + "\" -o\"" + bin_dir + "\" umk.exe >nul 2>&1";
-            RunCommand(extract_cmd);
+            RunCommand("7z.exe e -y -r \"" + archive + "\" -o\"" + bin_dir + "\" umk.exe >nul 2>&1");
             if (!FileExists(dest)) {
-                RunCommand("7z.exe e -y \"" + archive + "\" -o\"" + upp_root + "\" umk.exe >nul 2>&1");
-                string root_umk = JoinPath(upp_root, "umk.exe");
-                if (FileExists(root_umk)) {
-                    RunCommand("copy /y \"" + root_umk + "\" \"" + dest + "\" >nul 2>&1");
+                RunCommand("7z e -y -r \"" + archive + "\" -o\"" + bin_dir + "\" umk.exe >nul 2>&1");
+            }
+            if (!FileExists(dest)) {
+                RunCommand("\"C:\\Program Files\\7-Zip\\7z.exe\" e -y -r \"" + archive + "\" -o\"" + bin_dir + "\" umk.exe >nul 2>&1");
+            }
+            if (!FileExists(dest)) {
+                RunCommand("tar.exe -xf \"" + archive + "\" -C \"" + bin_dir + "\" >nul 2>&1");
+                string nested = JoinPath(bin_dir, "umk\\umk.exe");
+                if (FileExists(nested)) {
+                    RunCommand("copy /y \"" + nested + "\" \"" + dest + "\" >nul 2>&1");
                 }
             }
         }
+    }
+    if (!FileExists(dest)) {
+        cerr << "Error: umk executable not found or failed to extract at " << dest << endl;
+        return 1;
     }
     // Also copy to root umk.exe
     string root_dest = JoinPath(upp_root, "umk.exe");
