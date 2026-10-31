@@ -30,6 +30,7 @@ jobs:
           path: upp-root
           sparse-checkout: |
             uppsrc
+            script
 
       - name: Compile and Run Bootstrap
         env:
@@ -60,6 +61,7 @@ jobs:
           path: upp-root
           sparse-checkout: |
             uppsrc
+            script
 
       - name: Setup MSVC Developer Command Prompt
         uses: ilammy/msvc-dev-cmd@v1

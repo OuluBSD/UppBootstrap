@@ -23,34 +23,35 @@ It performs three distinct stages:
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Fast Happy-Case)
 
-### POSIX (Linux, FreeBSD, OpenBSD, NetBSD, macOS)
-
+### 1. Instant Bootstrap from Upstream U++ (Zero Manual Checkout)
 ```bash
 git clone https://github.com/OuluBSD/UppBootstrap.git
 cd UppBootstrap
 
-# Point to your U++ source tree (defaults to sibling ai-upp or ../uppsrc)
+# Downloads cached upstream release tarball (~29 MB) and bootstraps umk in seconds:
+./bootstrap.sh --upstream
+```
+
+### 2. Bootstrap from OuluBSD BazaarCore (Upcoming Modular Framework)
+```bash
+# Fetches modular BazaarCore and bootstraps modern toolchains:
+./bootstrap.sh --bazaar
+```
+
+### 3. Bootstrap from Existing Local Repository
+```bash
+# Point to your local U++ source tree:
 ./bootstrap.sh --upp-root /path/to/ai-upp
 ```
 
-### Windows (PowerShell)
+### Windows (PowerShell or CMD)
 
 ```powershell
-git clone https://github.com/OuluBSD/UppBootstrap.git
-cd UppBootstrap
-
-# Detects Visual Studio MSVC, Clang, or MinGW automatically
+# PowerShell:
 .\bootstrap.ps1 -UppRoot C:\Dev\ai-upp
-```
-
-### Windows (CMD Batch)
-
-```cmd
-git clone https://github.com/OuluBSD/UppBootstrap.git
-cd UppBootstrap
-
+# Or CMD:
 bootstrap.cmd --upp-root C:\Dev\ai-upp
 ```
 

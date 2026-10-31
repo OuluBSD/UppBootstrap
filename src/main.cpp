@@ -263,8 +263,22 @@ int BootstrapUmk(const string& upp_root, const string& methods_dir, bool verbose
 #endif
     string makefile = JoinPath(uppsrc, "umk" PATH_SEP_STR + makefile_name);
     if (!FileExists(makefile)) {
-        cerr << "Error: Makefile not found at " << makefile << endl;
-        return 2;
+        string alt = JoinPath(methods_dir, ".." PATH_SEP_STR "makefiles" PATH_SEP_STR + makefile_name);
+        if (FileExists(alt)) {
+            makefile = alt;
+        } else {
+            cerr << "Error: Makefile not found at " << makefile << endl;
+            return 2;
+        }
+    }
+
+    char abs_makefile[4096];
+    if (realpath(makefile.c_str(), abs_makefile)) {
+        makefile = abs_makefile;
+    }
+    char abs_uppsrc[4096];
+    if (realpath(uppsrc.c_str(), abs_uppsrc)) {
+        uppsrc = abs_uppsrc;
     }
 
     cout << "==> UppBootstrap: Compiling umk via " << makefile_name << "..." << endl;
@@ -317,7 +331,10 @@ int BootstrapUmk(const string& upp_root, const string& methods_dir, bool verbose
 void PrintUsage(const char* prog) {
     cout << "UppBootstrap - Zero-dependency U++ umk bootstrap toolchain\n"
          << "Usage: " << prog << " [options]\n\n"
-         << "Options:\n"
+         << "Happy-Case Fast Modes:\n"
+         << "  --upstream            Bootstrap using upstream U++ (downloads release tarball if needed)\n"
+         << "  --bazaar              Bootstrap using OuluBSD BazaarCore modular framework\n\n"
+         << "Standard Options:\n"
          << "  --bootstrap, -bs      Bootstrap umk and configure default methods\n"
          << "  --upp-root PATH       Root directory of U++ source tree (default: auto-detected)\n"
          << "  --methods-dir PATH    Directory containing template .bm methods\n"
@@ -334,6 +351,8 @@ int main(int argc, char* argv[]) {
     bool do_methods_only = false;
     bool do_verify = false;
     bool verbose = false;
+    bool do_upstream = false;
+    bool do_bazaar = false;
 
     // Auto-detect upp_root from executable location or parent directories
     string prog = argv[0];
@@ -343,6 +362,10 @@ int main(int argc, char* argv[]) {
         string arg = argv[i];
         if (arg == "--bootstrap" || arg == "-bs") {
             do_bootstrap = true;
+        } else if (arg == "--upstream") {
+            do_upstream = true;
+        } else if (arg == "--bazaar") {
+            do_bazaar = true;
         } else if (arg == "--install-methods") {
             do_methods_only = true;
         } else if (arg == "--verify") {
@@ -356,6 +379,29 @@ int main(int argc, char* argv[]) {
         } else if (arg == "--help" || arg == "-h") {
             PrintUsage(argv[0]);
             return 0;
+        }
+    }
+
+    if (do_upstream) {
+        if (upp_root.empty() || !DirectoryExists(JoinPath(upp_root, "uppsrc"))) {
+            upp_root = "upp-root";
+            RealizeDirectory(upp_root);
+            string cached_tar = ".cache" PATH_SEP_STR "uppsrc-18468.tar.gz";
+            if (!FileExists(cached_tar)) {
+                RealizeDirectory(".cache");
+                cout << "==> UppBootstrap: Fetching upstream U++ release tarball..." << endl;
+                RunCommand("curl -s -L https://github.com/ultimatepp/ultimatepp/releases/download/v2026.1/uppsrc-18468.tar.gz -o .cache" PATH_SEP_STR "uppsrc-18468.tar.gz");
+            }
+            cout << "==> UppBootstrap: Extracting minimal U++ packages..." << endl;
+            RunCommand("tar -xz -C " + upp_root + " -f .cache" PATH_SEP_STR "uppsrc-18468.tar.gz --wildcards 'uppsrc/Core/*' 'uppsrc/Draw/*' 'uppsrc/Esc/*' 'uppsrc/ide/*' 'uppsrc/plugin/*' 'uppsrc/umk/*'");
+        }
+    } else if (do_bazaar) {
+        if (upp_root.empty() || !DirectoryExists(JoinPath(upp_root, "uppsrc"))) {
+            upp_root = "bazaar-core";
+            if (!DirectoryExists(upp_root)) {
+                cout << "==> UppBootstrap: Fetching OuluBSD BazaarCore..." << endl;
+                RunCommand("git clone --depth 1 https://github.com/OuluBSD/BazaarCore.git " + upp_root);
+            }
         }
     }
 
