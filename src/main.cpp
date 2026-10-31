@@ -261,15 +261,13 @@ int BootstrapUmk(const string& upp_root, const string& methods_dir, bool verbose
 #else
     string makefile_name = "Makefile.linux64";
 #endif
-    string makefile = JoinPath(uppsrc, "umk" PATH_SEP_STR + makefile_name);
+    string makefile = JoinPath(methods_dir, ".." PATH_SEP_STR "makefiles" PATH_SEP_STR + makefile_name);
     if (!FileExists(makefile)) {
-        string alt = JoinPath(methods_dir, ".." PATH_SEP_STR "makefiles" PATH_SEP_STR + makefile_name);
-        if (FileExists(alt)) {
-            makefile = alt;
-        } else {
-            cerr << "Error: Makefile not found at " << makefile << endl;
-            return 2;
-        }
+        makefile = JoinPath(uppsrc, "umk" PATH_SEP_STR + makefile_name);
+    }
+    if (!FileExists(makefile)) {
+        cerr << "Error: Makefile not found at " << makefile << endl;
+        return 2;
     }
 
     char abs_makefile[4096];
