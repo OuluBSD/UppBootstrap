@@ -170,14 +170,14 @@ jobs:
           VER="${{ steps.version.outputs.version }}"
 
           cat <<EOF > release-notes.md
-          ### UppBootstrap v\${VER} Release
+          ### UppBootstrap v${VER} Release
 
           Zero-dependency U++ \`umk\` bootstrap toolchain.
 
           #### Release Assets (Standalone \`umk\` binary)
-          - **Linux x86_64**: \`umk-\${VER}-linux-x86_64.tar.gz\`
-          - **macOS Apple Silicon**: \`umk-\${VER}-macos-arm64.tar.gz\`
-          - **Windows x64**: \`umk-\${VER}-windows-x86_64.zip\`
+          - **Linux x86_64**: \`umk-${VER}-linux-x86_64.tar.gz\`
+          - **macOS Apple Silicon**: \`umk-${VER}-macos-arm64.tar.gz\`
+          - **Windows x64**: \`umk-${VER}-windows-x86_64.zip\`
           - **Checksums**: \`checksums.txt\`
 
           *Note: In this release, the standalone upstream \`umk\` executable is bundled. Subsequent releases will provide dual \`umk-upstream\` and \`umk-bazaarcore\` builds.*
