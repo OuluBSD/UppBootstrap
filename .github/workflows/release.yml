@@ -1,0 +1,191 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release Tag (e.g. v0.1.0)'
+        required: true
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release-posix:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x86_64
+          - os: macos-latest
+            target: macos-arm64
+
+    steps:
+      - name: Determine Version
+        id: version
+        shell: bash
+        run: |
+          RAW_TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VER="${RAW_TAG#v}"
+          echo "tag=${RAW_TAG}" >> $GITHUB_OUTPUT
+          echo "version=${VER}" >> $GITHUB_OUTPUT
+
+      - name: Checkout UppBootstrap
+        uses: actions/checkout@v4
+
+      - name: Checkout U++ Source (Upstream U++)
+        uses: actions/checkout@v4
+        with:
+          repository: ultimatepp/ultimatepp
+          path: upp-root
+          sparse-checkout: |
+            mkumk_blitz.cpp
+            Makefile
+            uppsrc/**
+          sparse-checkout-cone-mode: false
+
+      - name: Install System Dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make clang g++ libbz2-dev libexpat1-dev libfontconfig1-dev libfreetype-dev liblz4-dev liblzma-dev libpcre2-dev libpng-dev libx11-dev libxcb1-dev libxxhash-dev libzstd-dev zlib1g-dev
+
+      - name: Install System Dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install libpng lz4 pcre2 xxhash zstd xz bzip2
+
+      - name: Compile and Run Bootstrap
+        run: |
+          ./bootstrap.sh --upp-root upp-root --verbose
+
+      - name: Package Release Asset
+        shell: bash
+        run: |
+          mkdir -p dist
+          ASSET_NAME="umk-${{ steps.version.outputs.version }}-${{ matrix.target }}.tar.gz"
+          tar -czvf "dist/${ASSET_NAME}" -C upp-root/bin umk
+          echo "Created dist/${ASSET_NAME}"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: asset-${{ matrix.target }}
+          path: dist/*
+          retention-days: 1
+
+  build-release-windows:
+    name: Build (windows-x86_64)
+    runs-on: windows-latest
+    steps:
+      - name: Determine Version
+        id: version
+        shell: bash
+        run: |
+          RAW_TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VER="${RAW_TAG#v}"
+          echo "tag=${RAW_TAG}" >> $GITHUB_OUTPUT
+          echo "version=${VER}" >> $GITHUB_OUTPUT
+
+      - name: Checkout UppBootstrap
+        uses: actions/checkout@v4
+
+      - name: Checkout U++ Source (Upstream U++)
+        uses: actions/checkout@v4
+        with:
+          repository: ultimatepp/ultimatepp
+          path: upp-root
+          sparse-checkout: |
+            mkumk_blitz.cpp
+            Makefile
+            uppsrc/**
+          sparse-checkout-cone-mode: false
+
+      - name: Setup MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Run Windows Bootstrap
+        shell: cmd
+        run: |
+          bootstrap.cmd --upp-root upp-root --verbose
+
+      - name: Package Release Asset
+        shell: bash
+        run: |
+          mkdir -p dist
+          ASSET_NAME="umk-${{ steps.version.outputs.version }}-windows-x86_64.zip"
+          cd upp-root/bin && 7z a -tzip "../../dist/${ASSET_NAME}" umk.exe
+          echo "Created dist/${ASSET_NAME}"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: asset-windows-x86_64
+          path: dist/*
+          retention-days: 1
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [build-release-posix, build-release-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine Version
+        id: version
+        shell: bash
+        run: |
+          RAW_TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VER="${RAW_TAG#v}"
+          echo "tag=${RAW_TAG}" >> $GITHUB_OUTPUT
+          echo "version=${VER}" >> $GITHUB_OUTPUT
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download All Release Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate Checksums
+        shell: bash
+        run: |
+          cd release-assets
+          sha256sum umk-* > checksums.txt
+          cat checksums.txt
+
+      - name: Create or Update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          VER="${{ steps.version.outputs.version }}"
+          
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists. Updating release assets..."
+            gh release upload "$TAG" release-assets/* --clobber
+          else
+            echo "Creating new release $TAG..."
+            gh release create "$TAG" \
+              release-assets/* \
+              --title "UppBootstrap v${VER}" \
+              --notes "### UppBootstrap v${VER} Release
+
+Zero-dependency U++ \`umk\` bootstrap toolchain.
+
+#### Release Assets (Standalone \`umk\` binary)
+- **Linux x86_64**: \`umk-${VER}-linux-x86_64.tar.gz\`
+- **macOS Apple Silicon**: \`umk-${VER}-macos-arm64.tar.gz\`
+- **Windows x64**: \`umk-${VER}-windows-x86_64.zip\`
+- **Checksums**: \`checksums.txt\`
+
+*Note: In this release, the standalone upstream \`umk\` executable is bundled. Subsequent releases will provide dual \`umk-upstream\` and \`umk-bazaarcore\` builds.*"
+          fi
