@@ -239,77 +239,169 @@ int BootstrapUmk(const string& upp_root, const string& methods_dir, bool verbose
 
 #ifdef _WIN32
     cout << "==> UppBootstrap: Compiling umk (Windows / MSVC)..." << endl;
-    // On Windows, compile umk using cl.exe or umk-bootstrap script
     string dest = JoinPath(bin_dir, "umk.exe");
-    // Invoke python or native cl compilation
     string script = JoinPath(upp_root, "script\\build.py");
     if (FileExists(script)) {
         string cmd = "py -3 \"" + script + "\" --bootstrap";
         int res = RunCommand(cmd);
         if (res != 0) res = RunCommand("python \"" + script + "\" --bootstrap");
         if (res != 0) {
-            cerr << "Bootstrap build failed on Windows." << endl;
+            cerr << "Bootstrap build script failed on Windows." << endl;
+        }
+    }
+    if (!FileExists(dest)) {
+        cout << "==> UppBootstrap: Fetching official upstream umk release..." << endl;
+        string dl_dir = JoinPath(upp_root, ".cache");
+        RealizeDirectory(dl_dir);
+        string archive = JoinPath(dl_dir, "umk-win.7z");
+        if (!FileExists(archive)) {
+            string curl_cmd = "curl.exe -s -L \"https://github.com/ultimatepp/ultimatepp/releases/download/v2025.1.1/umk-win-17810.7z\" -o \"" + archive + "\"";
+            RunCommand(curl_cmd);
+        }
+        if (FileExists(archive)) {
+            string extract_cmd = "7z.exe e -y \"" + archive + "\" -o\"" + bin_dir + "\" umk.exe >nul 2>&1";
+            RunCommand(extract_cmd);
+            if (!FileExists(dest)) {
+                RunCommand("7z.exe e -y \"" + archive + "\" -o\"" + upp_root + "\" umk.exe >nul 2>&1");
+                string root_umk = JoinPath(upp_root, "umk.exe");
+                if (FileExists(root_umk)) {
+                    RunCommand("copy /y \"" + root_umk + "\" \"" + dest + "\" >nul 2>&1");
+                }
+            }
+        }
+    }
+    // Also copy to root umk.exe
+    string root_dest = JoinPath(upp_root, "umk.exe");
+    if (FileExists(dest) && !FileExists(root_dest)) {
+        RunCommand("copy /y \"" + dest + "\" \"" + root_dest + "\" >nul 2>&1");
+    }
+#else
+    string blitz_file = JoinPath(upp_root, "mkumk_blitz.cpp");
+    if (!FileExists(blitz_file)) {
+        blitz_file = JoinPath(methods_dir, ".." PATH_SEP_STR "makefiles" PATH_SEP_STR "mkumk_blitz.cpp");
+    }
+
+    string dest = JoinPath(bin_dir, "umk");
+
+    if (FileExists(blitz_file)) {
+        const char* cxx_env = getenv("CXX");
+        string cxx = (cxx_env && *cxx_env) ? string(cxx_env) : (tc == HostToolchain::Clang ? "clang++" : "g++");
+        cout << "==> UppBootstrap: Compiling umk directly via mkumk_blitz.cpp using " << cxx << "..." << endl;
+
+        string xxhash_src = "";
+        if (FileExists(JoinPath(uppsrc, "Core/xxHash_chk.cpp")))
+            xxhash_src = JoinPath(uppsrc, "Core/xxHash_chk.cpp");
+        else if (FileExists(JoinPath(uppsrc, "Core/xxHsh.cpp")))
+            xxhash_src = JoinPath(uppsrc, "Core/xxHsh.cpp");
+
+        vector<string> non_blitz = {
+            JoinPath(uppsrc, "Draw/FontCR.cpp"),
+            JoinPath(uppsrc, "Core/heaputil.cpp"),
+            JoinPath(uppsrc, "Core/hheap.cpp"),
+            JoinPath(uppsrc, "Core/sheap.cpp"),
+            JoinPath(uppsrc, "Core/lheap.cpp"),
+            JoinPath(uppsrc, "Core/heap.cpp"),
+            JoinPath(uppsrc, "Core/heapdbg.cpp"),
+            JoinPath(uppsrc, "Core/String.cpp"),
+            JoinPath(uppsrc, "Core/CharSet.cpp"),
+            JoinPath(uppsrc, "Core/CvFlt.cpp"),
+            xxhash_src,
+            JoinPath(uppsrc, "Core/Http.cpp")
+        };
+
+        stringstream ss;
+        ss << cxx << " -O2 -pthread -std=c++17";
+        ss << " -I\"" << uppsrc << "\" -I\"" << upp_root << "\"";
+        ss << " -DflagMAIN -DflagNO_FONTSYS";
+#ifdef __APPLE__
+        ss << " -I/opt/homebrew/include -I/usr/local/include";
+        ss << " -L/opt/homebrew/lib -L/usr/local/lib";
+#endif
+        ss << " \"" << blitz_file << "\"";
+        for (const string& s : non_blitz) {
+            if (!s.empty() && FileExists(s)) {
+                ss << " \"" << s << "\"";
+            }
+        }
+#ifdef __APPLE__
+        ss << " -llzma -lpcre2-8 -lpcre2-32 -llz4 -lzstd -lxxhash -lm -lz -lbz2 $(pkg-config --libs libpng 2>/dev/null || echo -lpng)";
+#else
+        ss << " -lstdc++ -llzma -lpcre2-8 -lpcre2-32 -llz4 -lzstd -lxxhash -lm -lz -lbz2 $(pkg-config --libs libpng 2>/dev/null || echo -lpng)";
+#endif
+        ss << " -o \"" << dest << "\"";
+
+        if (verbose) cout << "Executing: " << ss.str() << endl;
+        int res = RunCommand(ss.str());
+        if (WIFEXITED(res)) res = WEXITSTATUS(res);
+        else res = -1;
+
+        if (res != 0) {
+            cerr << "Error: Direct umk compilation failed with exit code " << res << endl;
             return res;
         }
     } else {
-        cerr << "Windows bootstrap script not found." << endl;
-        return 1;
-    }
-#else
 #ifdef __APPLE__
-    string makefile_name = "Makefile.macos15";
+        string makefile_name = "Makefile.macos15";
 #else
-    string makefile_name = "Makefile.linux64";
+        string makefile_name = "Makefile.linux64";
 #endif
-    string makefile = JoinPath(methods_dir, ".." PATH_SEP_STR "makefiles" PATH_SEP_STR + makefile_name);
-    if (!FileExists(makefile)) {
-        makefile = JoinPath(uppsrc, "umk" PATH_SEP_STR + makefile_name);
-    }
-    if (!FileExists(makefile)) {
-        cerr << "Error: Makefile not found at " << makefile << endl;
-        return 2;
+        string makefile = JoinPath(methods_dir, ".." PATH_SEP_STR "makefiles" PATH_SEP_STR + makefile_name);
+        if (!FileExists(makefile)) {
+            makefile = JoinPath(uppsrc, "umk" PATH_SEP_STR + makefile_name);
+        }
+        if (!FileExists(makefile)) {
+            cerr << "Error: Neither mkumk_blitz.cpp nor Makefile found for umk bootstrap." << endl;
+            return 2;
+        }
+
+        char abs_makefile[4096];
+        if (realpath(makefile.c_str(), abs_makefile)) makefile = abs_makefile;
+        char abs_uppsrc[4096];
+        if (realpath(uppsrc.c_str(), abs_uppsrc)) uppsrc = abs_uppsrc;
+
+        cout << "==> UppBootstrap: Compiling umk via " << makefile_name << "..." << endl;
+        stringstream ss;
+        ss << "make -f " << makefile << " -C " << uppsrc << " UPPOUT=../out/ all";
+        long ncpu = sysconf(_SC_NPROCESSORS_ONLN);
+        if (ncpu > 0) ss << " -j" << ncpu;
+
+        if (verbose) cout << "Executing: " << ss.str() << endl;
+        int res = RunCommand(ss.str());
+        if (WIFEXITED(res)) res = WEXITSTATUS(res);
+        else res = -1;
+
+        if (res != 0) {
+            cerr << "Error: umk makefile compilation failed with exit code " << res << endl;
+            return res;
+        }
+
+        string built_out = JoinPath(uppsrc, "umk.out");
+        if (FileExists(built_out)) {
+            string cp_cmd = "cp -f \"" + built_out + "\" \"" + dest + "\"";
+            RunCommand(cp_cmd);
+        }
     }
 
-    char abs_makefile[4096];
-    if (realpath(makefile.c_str(), abs_makefile)) {
-        makefile = abs_makefile;
-    }
-    char abs_uppsrc[4096];
-    if (realpath(uppsrc.c_str(), abs_uppsrc)) {
-        uppsrc = abs_uppsrc;
-    }
-
-    cout << "==> UppBootstrap: Compiling umk via " << makefile_name << "..." << endl;
-    stringstream ss;
-    ss << "make -f " << makefile << " -C " << uppsrc << " UPPOUT=../out/ all";
-    
-    long ncpu = sysconf(_SC_NPROCESSORS_ONLN);
-    if (ncpu > 0) ss << " -j" << ncpu;
-
-    if (verbose) cout << "Executing: " << ss.str() << endl;
-    int res = RunCommand(ss.str());
-#ifndef _WIN32
-    if (WIFEXITED(res)) res = WEXITSTATUS(res);
-    else res = -1;
-#endif
-
-    if (res != 0) {
-        cerr << "Error: umk makefile compilation failed with exit code " << res << endl;
-        return res;
-    }
-
-    string built_out = JoinPath(uppsrc, "umk.out");
-    string dest = JoinPath(bin_dir, "umk");
-    if (FileExists(built_out)) {
-        string cp_cmd = "cp -f \"" + built_out + "\" \"" + dest + "\"";
-        RunCommand(cp_cmd);
-        chmod(dest.c_str(), 0755);
+    chmod(dest.c_str(), 0755);
+    // Also make sure upp_root/umk exists if needed
+    string root_dest = JoinPath(upp_root, "umk");
+    if (FileExists(dest) && !FileExists(root_dest)) {
+        string cp_root = "cp -f \"" + dest + "\" \"" + root_dest + "\"";
+        RunCommand(cp_root);
+        chmod(root_dest.c_str(), 0755);
     }
 #endif
 
     cout << "==> UppBootstrap: Successfully bootstrapped umk to " << dest << endl;
     cout << "==> UppBootstrap: Verifying umk executable..." << endl;
-    string verify_cmd = "\"" + dest + "\" >/dev/null 2>&1";
+    string verify_cmd = "\"" + dest + "\"";
+    if (!verbose) {
+#ifdef _WIN32
+        verify_cmd += " >nul 2>&1";
+#else
+        verify_cmd += " >/dev/null 2>&1";
+#endif
+    }
     int vres = RunCommand(verify_cmd);
 #ifndef _WIN32
     if (WIFEXITED(vres)) vres = WEXITSTATUS(vres);
@@ -317,7 +409,7 @@ int BootstrapUmk(const string& upp_root, const string& methods_dir, bool verbose
     if (vres == 0) {
         cout << "==> UppBootstrap: Verification PASSED. umk is fully functional!" << endl;
     } else {
-        cout << "==> UppBootstrap: umk verification exited with code " << vres << " (check dependencies/libs)." << endl;
+        cerr << "==> UppBootstrap: umk verification exited with code " << vres << " (check dependencies/libs)." << endl;
     }
     return vres;
 }

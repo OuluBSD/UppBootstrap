@@ -23,21 +23,27 @@ jobs:
       - name: Checkout UppBootstrap
         uses: actions/checkout@v4
 
-      - name: Checkout U++ Source (ai-upp)
+      - name: Checkout U++ Source (Upstream U++)
         uses: actions/checkout@v4
         with:
-          repository: OuluBSD/ai-upp
+          repository: ultimatepp/ultimatepp
           path: upp-root
           sparse-checkout: |
+            mkumk_blitz.cpp
+            Makefile
             uppsrc/**
-            script/**
           sparse-checkout-cone-mode: false
 
       - name: Install System Dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libbz2-dev libpng-dev libfreetype6-dev libfontconfig1-dev libx11-dev libxcb1-dev libexpat1-dev
+          sudo apt-get install -y make clang g++ libbz2-dev libexpat1-dev libfontconfig1-dev libfreetype-dev liblz4-dev liblzma-dev libpcre2-dev libpng-dev libx11-dev libxcb1-dev libxxhash-dev libzstd-dev zlib1g-dev
+
+      - name: Install System Dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install libpng lz4 pcre2 xxhash zstd xz bzip2
 
       - name: Compile and Run Bootstrap
         env:
@@ -61,14 +67,15 @@ jobs:
       - name: Checkout UppBootstrap
         uses: actions/checkout@v4
 
-      - name: Checkout U++ Source (ai-upp)
+      - name: Checkout U++ Source (Upstream U++)
         uses: actions/checkout@v4
         with:
-          repository: OuluBSD/ai-upp
+          repository: ultimatepp/ultimatepp
           path: upp-root
           sparse-checkout: |
+            mkumk_blitz.cpp
+            Makefile
             uppsrc/**
-            script/**
           sparse-checkout-cone-mode: false
 
       - name: Setup MSVC Developer Command Prompt
