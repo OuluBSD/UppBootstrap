@@ -3,9 +3,13 @@
 **Zero-dependency U++ `umk` bootstrap toolchain for all system toolchains and shells.**
 
 Part of the **OuluBSD U++ Modularization Architecture**:
+```
+UppBootstrap  <--  AdvancedBuilder (UppBuilder)  <--  BazaarCore  <--  IDE (DevEnv)
+```
 1. **`UppBootstrap`** (this repo) — Zero-dependency toolchain bootstrap (`umk` compiler & build methods).
-2. **`UppBuilder`** — Advanced builder with the 3-pillar bridge (redirects, overlays, patches).
-3. **`BazaarCore`** — Modularized subpackages (`Core/*`, `Ctrl/{Core,Lib}`, `Draw/*`) with surgical upstream patches and multi-root UppHub registry.
+2. **`AdvancedBuilder` (`UppBuilder`)** — Meta-builder with the 3-pillar bridge, deterministic config keys, and assembly chaining.
+3. **`BazaarCore`** — Foundation assembly (`patched-uppsrc`), single amalgamated `Core/Ext`, and Tier 3 packages (`Docking`, `Terminal`, `Manager`...).
+4. **`IDE` (`DevEnv`)** — Modular developer environment application built on top of `BazaarCore` via `UppBuilder`.
 
 ---
 
