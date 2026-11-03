@@ -158,7 +158,7 @@ bool InstallBuildMethods(const string& methods_source_dir, HostToolchain tc) {
         for (const string& fn : files) {
             string src = JoinPath(methods_source_dir, fn);
             string dst = JoinPath(dir, fn);
-            if (FileExists(src) && !FileExists(dst)) {
+            if (FileExists(src)) {
                 string content = ReadTextFile(src);
                 WriteTextFile(dst, content);
             }
