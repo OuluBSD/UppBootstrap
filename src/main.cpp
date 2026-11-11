@@ -291,6 +291,10 @@ int BootstrapUmk(const string& upp_root, const string& methods_dir, bool verbose
     }
 
     string dest = JoinPath(bin_dir, "umk");
+    if (FileExists(dest)) {
+        cout << "==> UppBootstrap: umk already built at " << dest << endl;
+        return 0;
+    }
 
     if (FileExists(blitz_file)) {
         const char* cxx_env = getenv("CXX");
@@ -321,7 +325,7 @@ int BootstrapUmk(const string& upp_root, const string& methods_dir, bool verbose
         stringstream ss;
         ss << cxx << " -O2 -pthread -std=c++17";
         ss << " -I\"" << uppsrc << "\" -I\"" << upp_root << "\"";
-        ss << " -DflagMAIN -DflagNO_FONTSYS";
+        ss << " -DflagMAIN -DflagNO_FONTSYS -DflagMT -DflagPOSIX -DflagLINUX";
 #ifdef __APPLE__
         ss << " -I/opt/homebrew/include -I/usr/local/include";
         ss << " -L/opt/homebrew/lib -L/usr/local/lib";
