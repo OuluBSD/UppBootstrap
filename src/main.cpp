@@ -152,7 +152,7 @@ bool InstallBuildMethods(const string& methods_source_dir, HostToolchain tc) {
     target_dirs.push_back(JoinPath(home, ".upp/umk"));
 #endif
 
-    vector<string> files = {"CLANG.bm", "GCC.bm", "MSVS22x64.bm", "CLANG_macOS.bm"};
+    vector<string> files = {"CLANG.bm", "GCC.bm", "MSVS22x64.bm", "CLANG_macOS.bm", "EMCC.bm"};
     for (const string& dir : target_dirs) {
         RealizeDirectory(dir);
         for (const string& fn : files) {
