@@ -325,10 +325,13 @@ int BootstrapUmk(const string& upp_root, const string& methods_dir, bool verbose
         stringstream ss;
         ss << cxx << " -O2 -pthread -std=c++17";
         ss << " -I\"" << uppsrc << "\" -I\"" << upp_root << "\"";
-        ss << " -DflagMAIN -DflagNO_FONTSYS -DflagMT -DflagPOSIX -DflagLINUX";
+        ss << " -DflagMAIN -DflagNO_FONTSYS -DflagMT -DflagPOSIX";
 #ifdef __APPLE__
+        ss << " -DflagOSX11 -DflagNOMM";
         ss << " -I/opt/homebrew/include -I/usr/local/include";
         ss << " -L/opt/homebrew/lib -L/usr/local/lib";
+#else
+        ss << " -DflagLINUX";
 #endif
         ss << " \"" << blitz_file << "\"";
         for (const string& s : non_blitz) {
