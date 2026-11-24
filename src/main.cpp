@@ -516,7 +516,7 @@ int main(int argc, char* argv[]) {
         if (DirectoryExists("uppsrc")) upp_root = ".";
         else if (DirectoryExists("../uppsrc")) upp_root = "..";
         else if (DirectoryExists("../ai-upp/uppsrc")) upp_root = "../ai-upp";
-        else if (DirectoryExists("/home/sblo/Dev/ai-upp/uppsrc")) upp_root = "/home/sblo/Dev/ai-upp";
+        else if (DirectoryExists(JoinPath(JoinPath(GetHomeDirectory(), "upp"), "uppsrc"))) upp_root = JoinPath(GetHomeDirectory(), "upp");
     }
 
     // Default discovery for methods_dir
